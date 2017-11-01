@@ -27,6 +27,17 @@ module.exports.findName = (name) => {
     });
 }
 
+module.exports.findNameTranslation = (name, language) => {
+    return new Promise((resolve, reject) => {
+        db.query(`SELECT value FROM translations WHERE name = ${db.escape(name)} AND language = ${db.escape(language)} LIMIT 1`, (err, translation, fields) => {
+            if (err) return reject(err);
+            if (!translation || !translation.length) return reject(`Could not find translation of '${name}' in '${language}' in the database`);
+
+            return module.exports.generatePublicTranslationObject(name, language).then(resolve).catch(reject);
+        });
+    });
+}
+
 module.exports.searchTerm = (term) => {
     return new Promise((resolve, reject) => {
         db.query(`SELECT name FROM aliases WHERE name LIKE ${db.escape('%'+term+'%')} OR alias LIKE ${db.escape('%'+term+'%')}`, (err, names, fields) => {
@@ -62,6 +73,20 @@ module.exports.generatePublicObject = (name) => {
                         aliases: aliases.map(alias => alias.alias),
                     });
                 });
+            });
+        });
+    });
+}
+
+module.exports.generatePublicTranslationObject = (name, language) => {
+    return new Promise((resolve, reject) => {
+        db.query(`SELECT * FROM translations WHERE name = ${db.escape(name)} AND language = ${db.escape(language)} LIMIT 1`, (err, translations, fields) => {
+            if (err) return reject(err);
+            if (!translations || !translations.length) return reject(`Could not find translation of '${name}' in '${language}' in the database`);
+
+            return resolve({
+                name: name,
+                translations: translations.map(translation => ({ languageCode: translation.language, language: iso6393.find(o => o.iso6393 === translation.language).name, value: translation.value })),
             });
         });
     });
